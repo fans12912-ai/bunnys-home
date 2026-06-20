@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Sidebar from '../components/Sidebar'
 import MessageInput from '../components/MessageInput'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+// Vercel 部署时用同域（serverless functions），本地开发时用独立后端
+const API_BASE = import.meta.env.PROD ? '' : 'http://localhost:3001'
 
 function Chat() {
   const [sessions, setSessions] = useState([])
@@ -34,7 +35,7 @@ function Chat() {
   // 加载消息
   const loadMessages = useCallback(async (sessionId) => {
     try {
-      const res = await fetch(`${API_BASE}/api/messages/${sessionId}`)
+      const res = await fetch(`${API_BASE}/api/messages?sessionId=${sessionId}`)
       const data = await res.json()
       if (Array.isArray(data)) {
         setMessages(data.map(m => ({
@@ -88,10 +89,10 @@ function Chat() {
   const handleRenameSession = async (id, newName) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s))
     try {
-      await fetch(`${API_BASE}/api/sessions/${id}`, {
+      await fetch(`${API_BASE}/api/sessions`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName })
+        body: JSON.stringify({ id, name: newName })
       })
     } catch (err) {
       console.error('重命名失败:', err)
@@ -106,7 +107,11 @@ function Chat() {
       setActiveSessionId(rest[0]?.id || null)
     }
     try {
-      await fetch(`${API_BASE}/api/sessions/${id}`, { method: 'DELETE' })
+      await fetch(`${API_BASE}/api/sessions`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
     } catch (err) {
       console.error('删除失败:', err)
     }
